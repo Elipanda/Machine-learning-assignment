@@ -1,0 +1,58 @@
+---
+Title: "Machine Learning"
+Author: "Elisa Guardia Rondo"
+---
+## Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it.
+
+## Simulation
+First of all, I have loaded the libraries and the training and testing data, which I will use later in order to predict their class. 
+```{r, ECHO = TRUE, CACHE = TRUE}
+library(knitr)
+library(caret)
+library(AppliedPredictiveModeling)
+library(ggplot2)
+library(dplyr)
+
+library(pgmm)
+library(rpart)
+library(ElemStatLearn)
+library(gbm)
+library(e1071)
+library(lubridate)
+library(forecast)
+
+set.seed(56789)
+testing <- read.csv(file = "pml-testing.csv", header = TRUE, sep = ",")
+training <- read.csv(file = "pml-training.csv", header = TRUE, sep = ",")
+```
+Then, I have performed a bit of pre-process; therefore, I have eliminated all columns with NAs or empty values, which are not useful as predictors.
+```{r, ECHO = TRUE, CACHE = TRUE}
+train_2 <- training[ , apply(training, 2, function(x) !any(is.na(x)))]
+train_3 <- train_2[ , !apply(train_2, 2, function(x) any(x==""))]
+```
+After that, I have split the train data in order to have a set to perform the training and a set to perform the testing.
+```{r, ECHO = TRUE, CACHE = TRUE}
+inTrain <- createDataPartition(y = train_3$classe, p=0.7, list = FALSE)
+train_data <- train_3[inTrain , ]
+test_data <- train_3[-inTrain, ]
+```
+I have then tried to perform training and validation using a decision tree methods, since it seems logic in order to have the outcomes split into groups. Then, I have calculated the accuracy and the out-of-sample error.
+```{r, ECHO = TRUE, CACHE = TRUE}
+mod1 <- rpart(classe ~. , data = train_data, method = "class")
+pred_mod1 <- predict(mod1, test_data, type = "class")
+confusionMatrix(test_data$classe, pred_mod1)
+ose_1 <- 1 - as.numeric(confusionMatrix(test_data$classe, pred_mod1)$overall[1])
+```
+As we can see, the accuracy is very high, but I anyway tried to perform the random forest method to see if my accuracy will change.
+```{r, ECHO = TRUE, CACHE = TRUE}
+mod2 <- train(classe ~. , method = "rf", data = train_data, trControl = trainControl(method = "cv", 5), ntree = 250)
+pred_mod2 <- predict(mod2, test_data)
+confusionMatrix(test_data$classe, pred_mod2)
+ose_2 <- 1 - as.numeric(confusionMatrix(test_data$classe, pred_mod2)$overall[1])
+```
+Since the accuracy is very high in both cases, I will use the decision tree method to predict the class of the test set.
+```{r, ECHO = TRUE, CACHE = TRUE}
+predict(mod1, testing)
+```
+The test set is all in A class.
